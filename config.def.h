@@ -1,14 +1,14 @@
 /* See LICENSE file for copyright and license details. */
 
 /* appearance */
-static const char font[]            = "Sans 8";
-static const char normbordercolor[] = "#444444";
+static const char font[]            = "DejaVu Sans, Icons 8";
+static const char normbordercolor[] = "#333333"; // #444444
 static const char normbgcolor[]     = "#222222";
 static const char normfgcolor[]     = "#bbbbbb";
-static const char selbordercolor[]  = "#005577";
+static const char selbordercolor[]  = "#006699"; // #005577
 static const char selbgcolor[]      = "#005577";
 static const char selfgcolor[]      = "#eeeeee";
-static const unsigned int borderpx  = 1;        /* border pixel of windows */
+static const unsigned int borderpx  = 2;        /* border pixel of windows */
 static const unsigned int gappx     = 1;        /* gap pixel between windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 static const unsigned int systrayspacing = 2;   /* systray spacing */
@@ -18,19 +18,19 @@ static const Bool topbar            = True;     /* False means bottom bar */
 static const Bool statusmarkup      = True;     /* True means use pango markup in status message */
 
 /* tagging */
-static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "T" };
 
 static const Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating   monitor */
 	{ "Gimp",     NULL,       NULL,       0,            True,        -1 },
-	{ "Firefox",  NULL,       NULL,       1 << 8,       False,       -1 },
+//	{ "Firefox",  NULL,       NULL,       1 << 8,       False,       -1 },
 };
 
 /* layout(s) */
 static const int dirs[3]      = { DirHor, DirVer, DirVer }; /* tiling dirs */
 static const float facts[3]   = { 1.1,    1.1,    1.1 };    /* tiling facts */
 static const int nmaster      = 1;    /* number of clients in master area */
-static const Bool resizehints = True; /* True means respect size hints in tiled resizals */
+static const Bool resizehints = False; /* True means respect size hints in tiled resizals */
 
 static const Layout layouts[] = {
 	/* symbol     arrange function */
@@ -40,7 +40,7 @@ static const Layout layouts[] = {
 };
 
 /* key definitions */
-#define MODKEY Mod1Mask
+#define MODKEY Mod4Mask
 #define TAGKEYS(KEY,TAG) \
 	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
 	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
@@ -58,17 +58,30 @@ static const Layout layouts[] = {
 	{ MOD, XK_a,     ACTION##stack, {.i = 2 } }, \
 	{ MOD, XK_z,     ACTION##stack, {.i = -1 } },
 
-/* helper for spawning shell commands in the pre dwm-5.0 fashion */
-#define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
-
 /* commands */
-static const char *dmenucmd[] = { "dmenu_run", "-fn", font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, NULL };
-static const char *termcmd[]  = { "uxterm", NULL };
+static const char *launchcmd[] = { "launch", NULL };
+static const char *histcmd[] = { "hist", NULL };
+static const char *termcmd[] = { "xfce4-terminal", NULL };
+static const char *powercmd[] = { "power", NULL };
+static const char *searchselcmd[] = { "search", "@menu", "@sel", NULL };
+static const char *searchcmd[] = { "search", "@menu", NULL };
+#define MUSIC(arg) { .v = (const char*[]){ "music", #arg, NULL } }
+#define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
-	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
+	{ MODKEY,                       XK_e,      spawn,          {.v = launchcmd} },
+	{ MODKEY|ShiftMask,             XK_e,      spawn,          {.v = termcmd} },
+	{ MODKEY|ControlMask,           XK_e,      spawn,          {.v = histcmd} },
+	{ MODKEY,                       XK_BackSpace, spawn,       {.v = powercmd} },
+	{ MODKEY,                       XK_s,      spawn,          {.v = searchselcmd} },
+	{ MODKEY|ShiftMask,             XK_s,      spawn,          {.v = searchcmd} },
+	{ MODKEY|Mod1Mask,              XK_Up,     spawn,          MUSIC(vol-up) },
+	{ MODKEY|Mod1Mask,              XK_Down,   spawn,          MUSIC(vol-down) },
+	{ MODKEY|Mod1Mask,              XK_Left,   spawn,          MUSIC(prev) },
+	{ MODKEY|Mod1Mask,              XK_Right,  spawn,          MUSIC(next) },
+	{ MODKEY|Mod1Mask,              XK_Return, spawn,          MUSIC(play-pause) },
+	{ MODKEY|Mod1Mask,              XK_BackSpace, spawn,       MUSIC(mute) },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
 	STACKKEYS(MODKEY,                          focus)
 	STACKKEYS(MODKEY|ShiftMask,                push)
@@ -103,6 +116,7 @@ static Key keys[] = {
 	TAGKEYS(                        XK_7,                      6)
 	TAGKEYS(                        XK_8,                      7)
 	TAGKEYS(                        XK_9,                      8)
+	TAGKEYS(                        XK_w,                      9)
 	{ MODKEY|ShiftMask,             XK_BackSpace, quit,        {0} },
 };
 
