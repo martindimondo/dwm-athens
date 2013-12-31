@@ -103,6 +103,7 @@ typedef struct {
 	unsigned long sel[ColLast];
 	Drawable drawable;
 	GC gc;
+	unsigned long *scolors;
 	struct {
 		int ascent;
 		int descent;
@@ -179,7 +180,9 @@ static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
 static void drawsquare(Bool filled, Bool empty, Bool invert, unsigned long col[ColLast]);
+static void drawstext(void);
 static void drawtext(const char *text, unsigned long col[ColLast], Bool invert);
+static int drawtext2(const char *text, unsigned long colfg, unsigned long colbg, Bool cont);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
@@ -255,6 +258,7 @@ static void zoom(const Arg *arg);
 /* variables */
 static const char broken[] = "broken";
 static char stext[256];
+static int stextw;
 static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
 static int bh, blw = 0;      /* bar geometry */
@@ -449,7 +453,7 @@ buttonpress(XEvent *e) {
 		}
 		else if(ev->x < x + blw)
 			click = ClkLtSymbol;
-		else if(ev->x > selmon->ww - TEXTW(stext))
+		else if(ev->x > selmon->ww - stextw)
 			click = ClkStatusText;
 		else
 			click = ClkWinTitle;
@@ -741,13 +745,13 @@ drawbar(Monitor *m) {
 	dc.x += dc.w;
 	x = dc.x;
 	if(m == selmon) { /* status is only drawn on selected monitor */
-		dc.w = TEXTW(stext);
+		dc.w = stextw;
 		dc.x = m->ww - dc.w;
 		if(dc.x < x) {
 			dc.x = x;
 			dc.w = m->ww - x;
 		}
-		drawtext(stext, dc.norm, False);
+		drawstext();
 	}
 	else
 		dc.x = m->ww;
@@ -786,30 +790,64 @@ drawsquare(Bool filled, Bool empty, Bool invert, unsigned long col[ColLast]) {
 }
 
 void
-drawtext(const char *text, unsigned long col[ColLast], Bool invert) {
-	char buf[256];
-	int i, x, y, h, len, olen;
+drawstext(void) {
+	char *i = stext, *j, oldc;
+	int oldx = dc.x, oldw = dc.w, tw;
+	Bool cont = False;
+	unsigned long col = dc.scolors[0];
 
-	XSetForeground(dpy, dc.gc, col[invert ? ColFG : ColBG]);
+	while(True) {
+		for(j = i; *j < 0 || *j > LENGTH(scolors); j++);
+		if(j > i) {
+			oldc = *j;
+			*j = 0;
+			tw = drawtext2(i, col, dc.norm[ColBG], cont);
+			dc.x += tw;
+			dc.w -= tw;
+			*j = oldc;
+			cont = True;
+		}
+		if(!*j)
+			break;
+		col = dc.scolors[*j - 1];
+		i = j + 1;
+	}
+	dc.x = oldx;
+	dc.w = oldw;
+}
+
+void
+drawtext(const char *text, unsigned long col[ColLast], Bool invert) {
+	drawtext2(text, col[invert ? ColBG : ColFG], col[invert ? ColFG : ColBG], False);
+}
+
+int
+drawtext2(const char *text, unsigned long colfg, unsigned long colbg, Bool cont) {
+	char buf[256];
+	int i, x, y, h, len, olen, pad, tw;
+
+	XSetForeground(dpy, dc.gc, colbg);
 	XFillRectangle(dpy, dc.drawable, dc.gc, dc.x, dc.y, dc.w, dc.h);
 	if(!text)
-		return;
+		return 0;
 	olen = strlen(text);
 	h = dc.font.ascent + dc.font.descent;
+	pad = cont ? 0 : h / 2;
 	y = dc.y + (dc.h / 2) - (h / 2) + dc.font.ascent;
-	x = dc.x + (h / 2);
+	x = dc.x + pad;
 	/* shorten text if necessary */
-	for(len = MIN(olen, sizeof buf); len && textnw(text, len) > dc.w - h; len--);
+	for(len = MIN(olen, sizeof buf); len && (tw = textnw(text, len)) > dc.w - pad - h / 2 ; len--);
 	if(!len)
-		return;
+		return 0;
 	memcpy(buf, text, len);
 	if(len < olen)
 		for(i = len; i && i > len - 3; buf[--i] = '.');
-	XSetForeground(dpy, dc.gc, col[invert ? ColBG : ColFG]);
+	XSetForeground(dpy, dc.gc, colfg);
 	if(dc.font.set)
 		XmbDrawString(dpy, dc.drawable, dc.font.set, dc.gc, x, y, buf, len);
 	else
 		XDrawString(dpy, dc.drawable, dc.gc, x, y, buf, len);
+	return tw + pad;
 }
 
 void
@@ -1583,6 +1621,7 @@ setmfact(const Arg *arg) {
 void
 setup(void) {
 	XSetWindowAttributes wa;
+	unsigned int i;
 
 	/* clean up any zombies immediately */
 	sigchld(0);
@@ -1618,6 +1657,9 @@ setup(void) {
 	dc.sel[ColBorder] = getcolor(selbordercolor);
 	dc.sel[ColBG] = getcolor(selbgcolor);
 	dc.sel[ColFG] = getcolor(selfgcolor);
+	dc.scolors = (unsigned long *)malloc(sizeof(unsigned long) * LENGTH(scolors));
+	for(i = 0; i < LENGTH(scolors); i++)
+		dc.scolors[i] = getcolor(scolors[i]);
 	dc.drawable = XCreatePixmap(dpy, root, DisplayWidth(dpy, screen), bh, DefaultDepth(dpy, screen));
 	dc.gc = XCreateGC(dpy, root, 0, NULL);
 	XSetLineAttributes(dpy, dc.gc, 1, LineSolid, CapButt, JoinMiter);
@@ -2005,8 +2047,15 @@ updatetitle(Client *c) {
 
 void
 updatestatus(void) {
+	char *i, *j, buf[LENGTH(stext)];
+
 	if(!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
 		strcpy(stext, "dwm-"VERSION);
+	for(i = stext, j = buf; *i != 0; i++)
+		if(*i < 0 || *i > LENGTH(scolors))
+			*(j++) = *i;
+	*j = 0;
+	stextw = TEXTW(buf);
 	drawbar(selmon);
 }
 
