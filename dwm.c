@@ -1756,7 +1756,7 @@ textnw(const char *text, unsigned int len) {
 void
 tile(Monitor *m) {
 	Client *c;
-	unsigned int w, h, n, mx, my, mfx, mfy, mn, ms, sx, sy, sfx, sfy, sn, ss,
+	unsigned int w, h, n, g, mx, my, mfx, mfy, mn, ms, sx, sy, sfx, sfy, sn, ss,
 	             *dirs = m->pertag->dirs[m->pertag->curtag];
 	float f, *facts = m->pertag->facts[m->pertag->curtag];
 
@@ -1773,33 +1773,34 @@ tile(Monitor *m) {
 	sn = n - mn;
 	/* area rectangles master=(mx,my,mfx,mfy), stack=(sx,sy,sfx,sfy) */
 	f = mn == 0 ? 0 : (sn == 0 ? 1 : facts[AreaGlobal] / (1 + facts[AreaGlobal]));
+	g = mn == 0 || sn == 0 ? 0 : gappx;
 	if(dirs[0] == DirHor || dirs[0] == DirRotHor) {
-		ms = m->ww * f, sx = dirs[0] == DirRotHor ? 0 : ms;
-		ss = m->ww - ms, mx = dirs[0] == DirHor ? 0 : ss;
+		ms = (m->ww - g) * f, sx = dirs[0] == DirRotHor ? 0 : ms + g;
+		ss = m->ww - ms - g, mx = dirs[0] == DirHor ? 0 : ss + g;
 		my = 0, mfx = mx + ms, mfy = m->wh, sy = 0, sfx = sx + ss, sfy = m->wh;
 	}
 	else {
-		ms = m->wh * f, sy = dirs[0] == DirRotVer ? 0 : ms;
-		ss = m->wh - ms, my = dirs[0] == DirVer ? 0 : ss;
+		ms = (m->wh - g) * f, sy = dirs[0] == DirRotVer ? 0 : ms + g;
+		ss = m->wh - ms - g, my = dirs[0] == DirVer ? 0 : ss + g;
 		mx = 0, mfx = m->ww, mfy = my + ms, sx = 0, sfx = m->ww, sfy = sy + ss;
 	}
 	/* tile master clients */
 	for(c = nexttiled(m->clients), f = facts[AreaMaster]; mn; c = nexttiled(c->next), f = 1, mn--) {
 		f = f / (mn - 1 + f);
-		w = dirs[AreaMaster] == DirVer ? mfx - mx : f * (mfx - mx);
-		h = dirs[AreaMaster] == DirHor ? mfy - my : f * (mfy - my);
+		w = dirs[AreaMaster] == DirVer ? mfx - mx : f * (mfx - mx - (mn - 1) * gappx);
+		h = dirs[AreaMaster] == DirHor ? mfy - my : f * (mfy - my - (mn - 1) * gappx);
 		resize(c, m->wx + mx, m->wy + my, w - 2 * c->bw, h - 2 * c->bw, False);
-		mx += dirs[AreaMaster] == DirHor ? WIDTH(c) : 0;
-		my += dirs[AreaMaster] == DirVer ? HEIGHT(c) : 0;
+		mx += dirs[AreaMaster] == DirHor ? WIDTH(c) + gappx : 0;
+		my += dirs[AreaMaster] == DirVer ? HEIGHT(c) + gappx : 0;
 	}
 	/* tile stack clients */
 	for(f = facts[AreaStack]; sn; c = nexttiled(c->next), f = 1, sn--) {
 		f = f / (sn - 1 + f);
-		w = dirs[AreaStack] == DirVer ? sfx - sx : f * (sfx - sx);
-		h = dirs[AreaStack] == DirHor ? sfy - sy : f * (sfy - sy);
+		w = dirs[AreaStack] == DirVer ? sfx - sx : f * (sfx - sx - (sn - 1) * gappx);
+		h = dirs[AreaStack] == DirHor ? sfy - sy : f * (sfy - sy - (sn - 1) * gappx);
 		resize(c, m->wx + sx, m->wy + sy, w - 2 * c->bw, h - 2 * c->bw, False);
-		sx += dirs[AreaStack] == DirHor ? WIDTH(c) : 0;
-		sy += dirs[AreaStack] == DirVer ? HEIGHT(c) : 0;
+		sx += dirs[AreaStack] == DirHor ? WIDTH(c) + gappx : 0;
+		sy += dirs[AreaStack] == DirVer ? HEIGHT(c) + gappx : 0;
 	}
 }
 
