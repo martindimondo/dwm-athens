@@ -1343,8 +1343,15 @@ recttomon(int x, int y, int w, int h) {
 
 void
 resize(Client *c, int x, int y, int w, int h, Bool interact) {
-	if(applysizehints(c, &x, &y, &w, &h, interact))
+	int bw = c->bw;
+
+	if(!c->isfloating && (selmon->lt[selmon->sellt]->arrange == monocle ||
+	   (selmon->lt[selmon->sellt]->arrange &&
+	    nexttiled(c->mon->clients) == c && nexttiled(c->next) == NULL)))
+		w += 2 * c->bw, h += 2 * c->bw, c->bw = 0;
+	if(c->bw != bw || applysizehints(c, &x, &y, &w, &h, interact))
 		resizeclient(c, x, y, w, h);
+	c->bw = bw;
 }
 
 void
