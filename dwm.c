@@ -46,8 +46,11 @@
 /* macros */
 #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
+#define GETINC(X)               ((X) < 0 ? X + 1000 : X - 1000)
+#define INC(X)                  ((X) < 0 ? X - 1000 : X + 1000)
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
+#define ISINC(X)                ((X) <= -1000 || (X) >= 1000)
 #define ISVISIBLE(C)            ((C->tags & C->mon->tagset[C->mon->seltags]))
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #ifndef MAX
@@ -56,11 +59,13 @@
 #ifndef MIN
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
 #endif
+#define MOD(N,M)                ((N)%(M) < 0 ? (N)%(M) + (M) : (N)%(M))
 #define MOUSEMASK               (BUTTONMASK|PointerMotionMask)
 #define WIDTH(X)                ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X)               ((X)->h + 2 * (X)->bw)
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X)                (textnw(X, strlen(X)) + dc.font.height)
+#define TRUNC(X,A,B)            (MAX((A), MIN((X), (B))))
 
 #define SYSTEM_TRAY_REQUEST_DOCK    0
 #define _NET_SYSTEM_TRAY_ORIENTATION_HORZ 0
@@ -89,6 +94,8 @@ enum { Manager, Xembed, XembedInfo, XLast }; /* Xembed atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast };             /* clicks */
+enum { AreaGlobal, AreaMaster, AreaStack, AreaLast };   /* tiling areas */
+enum { DirHor, DirVer, DirRotHor, DirRotVer, DirLast }; /* tiling dirs */
 
 typedef union {
 	int i;
@@ -156,7 +163,6 @@ typedef struct {
 typedef struct Pertag Pertag;
 struct Monitor {
 	char ltsymbol[16];
-	float mfact;
 	int nmaster;
 	int num;
 	int by;               /* bar geometry */
@@ -256,10 +262,11 @@ static void scan(void);
 static Bool sendevent(Window w, Atom proto, int m, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
+static void setdirs(const Arg *arg);
+static void setfacts(const Arg *arg);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, Bool fullscreen);
 static void setlayout(const Arg *arg);
-static void setmfact(const Arg *arg);
 static void setup(void);
 static void showhide(Client *c);
 static void sigchld(int unused);
@@ -337,7 +344,8 @@ static Window root;
 struct Pertag {
 	unsigned int curtag, prevtag; /* current and previous tag */
 	int nmasters[LENGTH(tags) + 1]; /* number of windows in master area */
-	float mfacts[LENGTH(tags) + 1]; /* mfacts per tag */
+	unsigned int dirs[LENGTH(tags) + 1][AreaLast]; /* tiling dirs */
+	float facts[LENGTH(tags) + 1][AreaLast]; /* tiling facts */
 	unsigned int sellts[LENGTH(tags) + 1]; /* selected layouts */
 	const Layout *ltidxs[LENGTH(tags) + 1][2]; /* matrix of tags and layouts indexes  */
 	Bool showbars[LENGTH(tags) + 1]; /* display bar for the current tag */
@@ -751,12 +759,11 @@ configurerequest(XEvent *e) {
 Monitor *
 createmon(void) {
 	Monitor *m;
-	int i;
+	int i, j;
 
 	if(!(m = (Monitor *)calloc(1, sizeof(Monitor))))
 		die("fatal: could not malloc() %u bytes\n", sizeof(Monitor));
 	m->tagset[0] = m->tagset[1] = 1;
-	m->mfact = mfact;
 	m->nmaster = nmaster;
 	m->showbar = showbar;
 	m->topbar = topbar;
@@ -770,8 +777,11 @@ createmon(void) {
 		/* init nmaster */
 		m->pertag->nmasters[i] = m->nmaster;
 
-		/* init mfacts */
-		m->pertag->mfacts[i] = m->mfact;
+		/* init tiling dirs and facts */
+		for(j = AreaGlobal; j < AreaLast; j++) {
+			m->pertag->dirs[i][j] = MIN(dirs[j], ((int[]){ 3, 1, 1 }[j]));
+			m->pertag->facts[i][j] = TRUNC(facts[j], 0.1, 10);
+		}
 
 		/* init layouts */
 		m->pertag->ltidxs[i][0] = m->lt[0];
@@ -1693,6 +1703,29 @@ setclientstate(Client *c, long state) {
 			PropModeReplace, (unsigned char *)data, 2);
 }
 
+void
+setdirs(const Arg *arg) {
+	int *dirs = (int *)arg->v;
+	unsigned int *ptdirs = selmon->pertag->dirs[selmon->pertag->curtag], i, n;
+
+	for(i = AreaGlobal; i < AreaLast; i++) {
+		n = (int[]){ 4, 2, 2 }[i];
+		ptdirs[i] = ISINC(dirs[i]) ?
+			MOD((int)ptdirs[i] + GETINC(dirs[i]), n) : TRUNC(dirs[i], 0, n - 1);
+	}
+	arrange(selmon);
+}
+
+void
+setfacts(const Arg *arg) {
+	float *facts = (float *)arg->v, *ptfacts = selmon->pertag->facts[selmon->pertag->curtag];
+	unsigned int i;
+
+	for(i = AreaGlobal; i < AreaLast; i++)
+		ptfacts[i] = TRUNC(ISINC(facts[i]) ? ptfacts[i] + GETINC(facts[i]) : facts[i], 0.1, 10);
+	arrange(selmon);
+}
+
 Bool
 sendevent(Window w, Atom proto, int mask, long d0, long d1, long d2, long d3, long d4) {
 	int n;
@@ -1776,20 +1809,6 @@ setlayout(const Arg *arg) {
 		arrange(selmon);
 	else
 		drawbar(selmon);
-}
-
-/* arg > 1.0 will set mfact absolutly */
-void
-setmfact(const Arg *arg) {
-	float f;
-
-	if(!arg || !selmon->lt[selmon->sellt]->arrange)
-		return;
-	f = arg->f < 1.0 ? arg->f + selmon->mfact : arg->f - 1.0;
-	if(f < 0.1 || f > 0.9)
-		return;
-	selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag] = f;
-	arrange(selmon);
 }
 
 void
@@ -1923,28 +1942,53 @@ textnw(const char *text, unsigned int len) {
 
 void
 tile(Monitor *m) {
-	unsigned int i, n, h, mw, my, ty;
 	Client *c;
+	unsigned int w, h, n, g, mx, my, mfx, mfy, mn, ms, sx, sy, sfx, sfy, sn, ss,
+	             *dirs = m->pertag->dirs[m->pertag->curtag];
+	float f, *facts = m->pertag->facts[m->pertag->curtag];
 
+	/* layout symbols */
+	snprintf(m->ltsymbol, sizeof m->ltsymbol, "%c%c%c",
+		(char[]){ '<', '^', '>', 'v' }[dirs[AreaGlobal]],
+		(char[]){ '-', '|' }[dirs[AreaMaster]],
+		(char[]){ '-', '|' }[dirs[AreaStack]]);
+	/* number of clients */
 	for(n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 	if(n == 0)
 		return;
-
-	if(n > m->nmaster)
-		mw = m->nmaster ? m->ww * m->mfact : 0;
-	else
-		mw = m->ww;
-	for(i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-		if(i < m->nmaster) {
-			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), False);
-			my += HEIGHT(c);
-		}
-		else {
-			h = (m->wh - ty) / (n - i);
-			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), False);
-			ty += HEIGHT(c);
-		}
+	mn = MIN(n, m->nmaster);
+	sn = n - mn;
+	/* area rectangles master=(mx,my,mfx,mfy), stack=(sx,sy,sfx,sfy) */
+	f = mn == 0 ? 0 : (sn == 0 ? 1 : facts[AreaGlobal] / (1 + facts[AreaGlobal]));
+	g = mn == 0 || sn == 0 ? 0 : gappx;
+	if(dirs[0] == DirHor || dirs[0] == DirRotHor) {
+		ms = (m->ww - g) * f, sx = dirs[0] == DirRotHor ? 0 : ms + g;
+		ss = m->ww - ms - g, mx = dirs[0] == DirHor ? 0 : ss + g;
+		my = 0, mfx = mx + ms, mfy = m->wh, sy = 0, sfx = sx + ss, sfy = m->wh;
+	}
+	else {
+		ms = (m->wh - g) * f, sy = dirs[0] == DirRotVer ? 0 : ms + g;
+		ss = m->wh - ms - g, my = dirs[0] == DirVer ? 0 : ss + g;
+		mx = 0, mfx = m->ww, mfy = my + ms, sx = 0, sfx = m->ww, sfy = sy + ss;
+	}
+	/* tile master clients */
+	for(c = nexttiled(m->clients), f = facts[AreaMaster]; mn; c = nexttiled(c->next), f = 1, mn--) {
+		f = f / (mn - 1 + f);
+		w = dirs[AreaMaster] == DirVer ? mfx - mx : f * (mfx - mx - (mn - 1) * gappx);
+		h = dirs[AreaMaster] == DirHor ? mfy - my : f * (mfy - my - (mn - 1) * gappx);
+		resize(c, m->wx + mx, m->wy + my, w - 2 * c->bw, h - 2 * c->bw, False);
+		mx += dirs[AreaMaster] == DirHor ? WIDTH(c) + gappx : 0;
+		my += dirs[AreaMaster] == DirVer ? HEIGHT(c) + gappx : 0;
+	}
+	/* tile stack clients */
+	for(f = facts[AreaStack]; sn; c = nexttiled(c->next), f = 1, sn--) {
+		f = f / (sn - 1 + f);
+		w = dirs[AreaStack] == DirVer ? sfx - sx : f * (sfx - sx - (sn - 1) * gappx);
+		h = dirs[AreaStack] == DirHor ? sfy - sy : f * (sfy - sy - (sn - 1) * gappx);
+		resize(c, m->wx + sx, m->wy + sy, w - 2 * c->bw, h - 2 * c->bw, False);
+		sx += dirs[AreaStack] == DirHor ? WIDTH(c) + gappx : 0;
+		sy += dirs[AreaStack] == DirVer ? HEIGHT(c) + gappx : 0;
+	}
 }
 
 void
@@ -2011,7 +2055,6 @@ toggleview(const Arg *arg) {
 
 		/* apply settings for this view */
 		selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag];
-		selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag];
 		selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag];
 		selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt];
 		selmon->lt[selmon->sellt^1] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt^1];
@@ -2426,7 +2469,6 @@ view(const Arg *arg) {
 		selmon->pertag->curtag = tmptag;
 	}
 	selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag];
-	selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag];
 	selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag];
 	selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt];
 	selmon->lt[selmon->sellt^1] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt^1];
