@@ -60,28 +60,36 @@ static const Layout layouts[] = {
 
 /* commands */
 static const char *launchcmd[] = { "launch", NULL };
-static const char *histcmd[] = { "hist", NULL };
 static const char *termcmd[] = { "xfce4-terminal", NULL };
-static const char *powercmd[] = { "power", NULL };
 static const char *searchselcmd[] = { "search", "@menu", "@sel", NULL };
 static const char *searchcmd[] = { "search", "@menu", NULL };
+static const char *histcmd[] = { "hist", NULL };
+static const char *webcmd[] = { "firefox", NULL };
+static const char *filemgrcmd[] = { "pcmanfm", NULL };
+static const char *mailcmd[] = { "launch", "gmail", NULL };
+static const char *powercmd[] = { "power", NULL };
 #define MUSIC(arg) { .v = (const char*[]){ "music", #arg, NULL } }
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ MODKEY,                       XK_e,      spawn,          {.v = launchcmd} },
-	{ MODKEY|ShiftMask,             XK_e,      spawn,          {.v = termcmd} },
-	{ MODKEY|ControlMask,           XK_e,      spawn,          {.v = histcmd} },
-	{ MODKEY,                       XK_BackSpace, spawn,       {.v = powercmd} },
+	{ MODKEY,                       XK_e,      spawn,          {.v = launchcmd } },
+	{ MODKEY|ShiftMask,             XK_e,      spawn,          {.v = termcmd } },
 	{ MODKEY,                       XK_s,      spawn,          {.v = searchselcmd} },
 	{ MODKEY|ShiftMask,             XK_s,      spawn,          {.v = searchcmd} },
-	{ MODKEY|Mod1Mask,              XK_Up,     spawn,          MUSIC(vol-up) },
-	{ MODKEY|Mod1Mask,              XK_Down,   spawn,          MUSIC(vol-down) },
-	{ MODKEY|Mod1Mask,              XK_Left,   spawn,          MUSIC(prev) },
-	{ MODKEY|Mod1Mask,              XK_Right,  spawn,          MUSIC(next) },
-	{ MODKEY|Mod1Mask,              XK_Return, spawn,          MUSIC(play-pause) },
-	{ MODKEY|Mod1Mask,              XK_BackSpace, spawn,       MUSIC(mute) },
+	{ MODKEY|ShiftMask,             XK_h,      spawn,          {.v = histcmd } },
+	{ MODKEY|ShiftMask,             XK_w,      spawn,          {.v = webcmd } },
+	{ MODKEY|ShiftMask,             XK_f,      spawn,          {.v = filemgrcmd } },
+	{ MODKEY|ShiftMask,             XK_g,      spawn,          {.v = mailcmd } },
+	{ MODKEY|ShiftMask,             XK_m,      spawn,          MUSIC(launch) },
+	{ MODKEY|ShiftMask,             XK_Up,     spawn,          MUSIC(vol-up) },
+	{ MODKEY|ShiftMask,             XK_Down,   spawn,          MUSIC(vol-down) },
+	{ MODKEY|ControlMask,           XK_Down,   spawn,          MUSIC(mute) },
+	{ MODKEY|ShiftMask,             XK_Left,   spawn,          MUSIC(prev) },
+	{ MODKEY|ShiftMask,             XK_Right,  spawn,          MUSIC(next) },
+	{ MODKEY|ControlMask,           XK_Right,  spawn,          MUSIC(play-pause) },
+	{ MODKEY|ShiftMask,             XK_BackSpace, spawn,       {.v = powercmd} },
+	{ MODKEY|ShiftMask|ControlMask, XK_BackSpace, quit,        {0} },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
 	STACKKEYS(MODKEY,                          focus)
 	STACKKEYS(MODKEY|ShiftMask,                push)
@@ -117,7 +125,6 @@ static Key keys[] = {
 	TAGKEYS(                        XK_8,                      7)
 	TAGKEYS(                        XK_9,                      8)
 	TAGKEYS(                        XK_w,                      9)
-	{ MODKEY|ShiftMask,             XK_BackSpace, quit,        {0} },
 };
 
 /* button definitions */
