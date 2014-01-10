@@ -57,4 +57,11 @@ uninstall:
 	@echo removing manual page from ${DESTDIR}${MANPREFIX}/man1
 	@rm -f ${DESTDIR}${MANPREFIX}/man1/dwm.1
 
+tryenv:
+	@Xephyr :1 -fullscreen &
+	@for i in {1..5}; do DISPLAY=:1 xfce4-terminal & done
+
+try: all
+	DISPLAY=:1 ./dwm
+
 .PHONY: all options clean dist install uninstall
