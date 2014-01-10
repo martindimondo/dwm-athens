@@ -69,7 +69,6 @@ enum { NetSupported, NetWMName, NetWMState,
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast };             /* clicks */
-enum { AreaGlobal, AreaMaster, AreaStack, AreaLast };   /* tiling areas */
 enum { DirHor, DirVer, DirRotHor, DirRotVer, DirLast }; /* tiling dirs */
 
 typedef union {
@@ -78,6 +77,11 @@ typedef union {
 	float f;
 	const void *v;
 } Arg;
+
+typedef struct {
+	unsigned int x, y, fx, fy, n, dir;
+	float fact;
+} Area;
 
 typedef struct {
 	unsigned int click;
@@ -299,8 +303,7 @@ static Window root;
 struct Pertag {
 	unsigned int curtag, prevtag; /* current and previous tag */
 	int nmasters[LENGTH(tags) + 1]; /* number of windows in master area */
-	unsigned int dirs[LENGTH(tags) + 1][AreaLast]; /* tiling dirs */
-	float facts[LENGTH(tags) + 1][AreaLast]; /* tiling facts */
+	Area areas[LENGTH(tags) + 1][3]; /* tiling areas */
 	unsigned int sellts[LENGTH(tags) + 1]; /* selected layouts */
 	const Layout *ltidxs[LENGTH(tags) + 1][2]; /* matrix of tags and layouts indexes  */
 	Bool showbars[LENGTH(tags) + 1]; /* display bar for the current tag */
@@ -684,9 +687,9 @@ createmon(void) {
 		m->pertag->nmasters[i] = m->nmaster;
 
 		/* init tiling dirs and facts */
-		for(j = AreaGlobal; j < AreaLast; j++) {
-			m->pertag->dirs[i][j] = MIN(dirs[j], ((int[]){ 3, 1, 1 }[j]));
-			m->pertag->facts[i][j] = TRUNC(facts[j], 0.1, 10);
+		for(j = 0; j < 3; j++) {
+			m->pertag->areas[i][j].dir = MIN(dirs[j], ((int[]){ 3, 1, 1 }[j]));
+			m->pertag->areas[i][j].fact = TRUNC(facts[j], 0.1, 10);
 		}
 
 		/* init layouts */
@@ -1536,24 +1539,26 @@ setclientstate(Client *c, long state) {
 
 void
 setdirs(const Arg *arg) {
-	int *dirs = (int *)arg->v;
-	unsigned int *ptdirs = selmon->pertag->dirs[selmon->pertag->curtag], i, n;
+	int *dirs = (int *)arg->v, i, n;
+	Area *areas = selmon->pertag->areas[selmon->pertag->curtag];
 
-	for(i = AreaGlobal; i < AreaLast; i++) {
+	for(i = 0; i < 3; i++) {
 		n = (int[]){ 4, 2, 2 }[i];
-		ptdirs[i] = ISINC(dirs[i]) ?
-			MOD((int)ptdirs[i] + GETINC(dirs[i]), n) : TRUNC(dirs[i], 0, n - 1);
+		areas[i].dir = ISINC(dirs[i]) ?
+			MOD((int)areas[i].dir + GETINC(dirs[i]), n) : TRUNC(dirs[i], 0, n - 1);
 	}
 	arrange(selmon);
 }
 
 void
 setfacts(const Arg *arg) {
-	float *facts = (float *)arg->v, *ptfacts = selmon->pertag->facts[selmon->pertag->curtag];
-	unsigned int i;
+	float *facts = (float *)arg->v;
+	Area *areas = selmon->pertag->areas[selmon->pertag->curtag];
+	int i;
 
-	for(i = AreaGlobal; i < AreaLast; i++)
-		ptfacts[i] = TRUNC(ISINC(facts[i]) ? ptfacts[i] + GETINC(facts[i]) : facts[i], 0.1, 10);
+	for(i = 0; i < 3; i++)
+		areas[i].fact = TRUNC(ISINC(facts[i]) ?
+			areas[i].fact + GETINC(facts[i]) : facts[i], 0.1, 10);
 	arrange(selmon);
 }
 
@@ -1756,51 +1761,40 @@ textnw(const char *text, unsigned int len) {
 void
 tile(Monitor *m) {
 	Client *c;
-	unsigned int w, h, n, g, mx, my, mfx, mfy, mn, ms, sx, sy, sfx, sfy, sn, ss,
-	             *dirs = m->pertag->dirs[m->pertag->curtag];
-	float f, *facts = m->pertag->facts[m->pertag->curtag];
+	Area *ga = m->pertag->areas[m->pertag->curtag], *ma = ga + 1, *sa = ga + 2, *a;
+	unsigned int n, i, w, h, g, ms, ss;
+	float f;
 
-	/* layout symbols */
+	/* print layout symbols */
 	snprintf(m->ltsymbol, sizeof m->ltsymbol, "%c%c%c",
-		(char[]){ '<', '^', '>', 'v' }[dirs[AreaGlobal]],
-		(char[]){ '-', '|' }[dirs[AreaMaster]],
-		(char[]){ '-', '|' }[dirs[AreaStack]]);
-	/* number of clients */
+		(char[]){ '<', '^', '>', 'v' }[ga->dir],
+		(char[]){ '-', '|' }[ma->dir],
+		(char[]){ '-', '|' }[sa->dir]);
+	/* calculate number of clients */
 	for(n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 	if(n == 0)
 		return;
-	mn = MIN(n, m->nmaster);
-	sn = n - mn;
-	/* area rectangles master=(mx,my,mfx,mfy), stack=(sx,sy,sfx,sfy) */
-	f = mn == 0 ? 0 : (sn == 0 ? 1 : facts[AreaGlobal] / (1 + facts[AreaGlobal]));
-	g = mn == 0 || sn == 0 ? 0 : gappx;
-	if(dirs[0] == DirHor || dirs[0] == DirRotHor) {
-		ms = (m->ww - g) * f, sx = dirs[0] == DirRotHor ? 0 : ms + g;
-		ss = m->ww - ms - g, mx = dirs[0] == DirHor ? 0 : ss + g;
-		my = 0, mfx = mx + ms, mfy = m->wh, sy = 0, sfx = sx + ss, sfy = m->wh;
-	}
-	else {
-		ms = (m->wh - g) * f, sy = dirs[0] == DirRotVer ? 0 : ms + g;
-		ss = m->wh - ms - g, my = dirs[0] == DirVer ? 0 : ss + g;
-		mx = 0, mfx = m->ww, mfy = my + ms, sx = 0, sfx = m->ww, sfy = sy + ss;
-	}
-	/* tile master clients */
-	for(c = nexttiled(m->clients), f = facts[AreaMaster]; mn; c = nexttiled(c->next), f = 1, mn--) {
-		f = f / (mn - 1 + f);
-		w = dirs[AreaMaster] == DirVer ? mfx - mx : f * (mfx - mx - (mn - 1) * gappx);
-		h = dirs[AreaMaster] == DirHor ? mfy - my : f * (mfy - my - (mn - 1) * gappx);
-		resize(c, m->wx + mx, m->wy + my, w - 2 * c->bw, h - 2 * c->bw, False);
-		mx += dirs[AreaMaster] == DirHor ? WIDTH(c) + gappx : 0;
-		my += dirs[AreaMaster] == DirVer ? HEIGHT(c) + gappx : 0;
-	}
-	/* tile stack clients */
-	for(f = facts[AreaStack]; sn; c = nexttiled(c->next), f = 1, sn--) {
-		f = f / (sn - 1 + f);
-		w = dirs[AreaStack] == DirVer ? sfx - sx : f * (sfx - sx - (sn - 1) * gappx);
-		h = dirs[AreaStack] == DirHor ? sfy - sy : f * (sfy - sy - (sn - 1) * gappx);
-		resize(c, m->wx + sx, m->wy + sy, w - 2 * c->bw, h - 2 * c->bw, False);
-		sx += dirs[AreaStack] == DirHor ? WIDTH(c) + gappx : 0;
-		sy += dirs[AreaStack] == DirVer ? HEIGHT(c) + gappx : 0;
+	ma->n = MIN(n, m->nmaster), sa->n = n - ma->n;
+	/* calculate area rectangles */
+	f = ma->n == 0 ? 0 : (sa->n == 0 ? 1 : ga->fact / 2);
+	g = ma->n == 0 || sa->n == 0 ? 0 : gappx;
+	if(ga->dir == DirHor || ga->dir == DirRotHor)
+		ms = f * (m->ww - g), ss = m->ww - ms - g,
+		ma->x = ga->dir == DirHor ? 0 : ss + g, ma->y = 0, ma->fx = ma->x + ms, ma->fy = m->wh,
+		sa->x = ga->dir == DirHor ? ms + g: 0, sa->y = 0, sa->fx = sa->x + ss, sa->fy = m->wh;
+	else
+		ms = f * (m->wh - g), ss = m->wh - ms - g,
+		ma->x = 0, ma->y = ga->dir == DirVer ? 0 : ss + g, ma->fx = m->ww, ma->fy = ma->y + ms,
+		sa->x = 0, sa->y = ga->dir == DirVer ? ms + g : 0, sa->fx = m->ww, sa->fy = sa->y + ss;
+	/* tile clients */
+	for(c = nexttiled(m->clients), i = 0; i < n; c = nexttiled(c->next), i++) {
+		a = ma->n > 0 ? ma : sa;
+		f = i == 0 || ma->n == 0 ? a->fact : 1, f /= --a->n + f;
+		w = a->dir == DirVer ? a->fx - a->x : f * (a->fx - a->x - a->n * gappx);
+		h = a->dir == DirHor ? a->fy - a->y : f * (a->fy - a->y - a->n * gappx);;
+		resize(c, m->wx + a->x, m->wy + a->y, w - 2 * c->bw, h - 2 * c->bw, False);
+		a->x += a->dir == DirHor ? w + gappx : 0;
+		a->y += a->dir == DirVer ? h + gappx : 0;
 	}
 }
 
