@@ -2,13 +2,13 @@
 
 /* appearance */
 static const char font[]            = "DejaVu Sans, Icons 8";
-static const char normbordercolor[] = "#333333"; // #444444
-static const char normbgcolor[]     = "#222222";
-static const char normfgcolor[]     = "#bbbbbb";
-static const char selbordercolor[]  = "#006699"; // #005577
-static const char selbgcolor[]      = "#005577";
-static const char selfgcolor[]      = "#eeeeee";
-static const unsigned int borderpx  = 2;        /* border pixel of windows */
+static const char normbordercolor[] = "#002b36";
+static const char normbgcolor[]     = "#001014";
+static const char normfgcolor[]     = "#839496";
+static const char selbordercolor[]  = "#00708c";
+static const char selbgcolor[]      = "#002b36";
+static const char selfgcolor[]      = "#839496";
+static const unsigned int borderpx  = 3;        /* border pixel of windows */
 static const unsigned int gappx     = 1;        /* gap pixel between windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 static const unsigned int minbhpx   = 16;       /* min height pixel of bar */
