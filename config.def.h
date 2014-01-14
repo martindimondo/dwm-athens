@@ -18,7 +18,7 @@ static const Bool topbar            = True;     /* False means bottom bar */
 static const Bool statusmarkup      = True;     /* True means use pango markup in status message */
 
 /* tagging */
-static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "T" };
+static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "v" };
 
 static const Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating   monitor */
@@ -61,13 +61,15 @@ static const Layout layouts[] = {
 
 /* commands */
 static const char *launchcmd[] = { "launch", NULL };
-static const char *termcmd[] = { "xfce4-terminal", NULL };
+static const char *termcmd[] = { "launch", "terminal", NULL };
 static const char *searchselcmd[] = { "search", "@menu", "@sel", NULL };
 static const char *searchcmd[] = { "search", "@menu", NULL };
 static const char *histcmd[] = { "hist", NULL };
-static const char *webcmd[] = { "firefox", NULL };
-static const char *filemgrcmd[] = { "pcmanfm", NULL };
-static const char *mailcmd[] = { "launch", "gmail", NULL };
+static const char *notecmd[] = { "note", NULL };
+static const char *todocmd[] = { "note", "todo", NULL };
+static const char *webcmd[] = { "launch", "browser", NULL };
+static const char *filemgrcmd[] = { "launch", "filemgr", NULL };
+static const char *mailcmd[] = { "launch", "mail", NULL };
 static const char *powercmd[] = { "power", NULL };
 #define MUSIC(arg) { .v = (const char*[]){ "music", #arg, NULL } }
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
@@ -79,6 +81,8 @@ static Key keys[] = {
 	{ MODKEY,                       XK_s,      spawn,          {.v = searchselcmd} },
 	{ MODKEY|ShiftMask,             XK_s,      spawn,          {.v = searchcmd} },
 	{ MODKEY|ShiftMask,             XK_h,      spawn,          {.v = histcmd } },
+	{ MODKEY|ShiftMask,             XK_n,      spawn,          {.v = notecmd } },
+	{ MODKEY|ControlMask,           XK_n,      spawn,          {.v = todocmd } },
 	{ MODKEY|ShiftMask,             XK_w,      spawn,          {.v = webcmd } },
 	{ MODKEY|ShiftMask,             XK_f,      spawn,          {.v = filemgrcmd } },
 	{ MODKEY|ShiftMask,             XK_g,      spawn,          {.v = mailcmd } },
@@ -125,7 +129,7 @@ static Key keys[] = {
 	TAGKEYS(                        XK_7,                      6)
 	TAGKEYS(                        XK_8,                      7)
 	TAGKEYS(                        XK_9,                      8)
-	TAGKEYS(                        XK_w,                      9)
+	TAGKEYS(                        XK_v,                      9)
 };
 
 /* button definitions */
