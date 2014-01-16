@@ -2254,6 +2254,7 @@ updatesystrayiconstate(Client *i, XPropertyEvent *ev) {
 void
 updatesystray(void) {
 	XSetWindowAttributes wa;
+	XWindowChanges wc;
 	Client *i;
 	unsigned int x = selmon->mx + selmon->mw;
 	unsigned int w = 1;
@@ -2296,7 +2297,10 @@ updatesystray(void) {
 	}
 	w = w ? w + systrayspacing : 1;
  	x -= w;
-	XMoveResizeWindow(dpy, systray->win, x, selmon->by, w, bh);
+	wc.x = x; wc.y = selmon->by; wc.width = w; wc.height = bh;
+	wc.stack_mode = Above; wc.sibling = selmon->barwin;
+	XConfigureWindow(dpy, systray->win, CWX|CWY|CWWidth|CWHeight|CWSibling|CWStackMode, &wc);
+	XMapWindow(dpy, systray->win);
 	/* redraw background */
 	XSetForeground(dpy, dc.gc, dc.norm[ColBG]);
 	XFillRectangle(dpy, systray->win, dc.gc, 0, 0, w, bh);
