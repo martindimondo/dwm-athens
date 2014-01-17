@@ -59,7 +59,6 @@
 #define SYSTEM_TRAY_REQUEST_DOCK           0
 #define _NET_SYSTEM_TRAY_ORIENTATION_HORZ  0
 #define XEMBED_EMBEDDED_NOTIFY             0
-#define XEMBED_MAPPED                      1
 #define VERSION_MAJOR                      0
 #define VERSION_MINOR                      0
 #define XEMBED_EMBEDDED_VERSION            (VERSION_MAJOR << 16) | VERSION_MINOR
@@ -70,7 +69,7 @@ enum { ColBorder, ColFG, ColBG, ColLast };              /* color */
 enum { NetSupported, NetSystemTray, NetSystemTrayOP, NetSystemTrayOrientation,
        NetWMName, NetWMState, NetWMFullscreen, NetActiveWindow, NetWMWindowType,
        NetWMWindowTypeDialog, NetLast }; /* EWMH atoms */
-enum { Manager, Xembed, XembedInfo, XLast }; /* Xembed atoms */
+enum { Manager, Xembed, XLast }; /* Xembed atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast };             /* clicks */
@@ -261,7 +260,6 @@ static void updatesizehints(Client *c);
 static void updatestatus(void);
 static void updatesystray(void);
 static void updatesystrayicongeom(Client *i, int w, int h);
-static void updatesystrayiconstate(Client *i, XPropertyEvent *ev);
 static void updatewindowtype(Client *c);
 static void updatetitle(Client *c);
 static void updatewmhints(Client *c);
@@ -580,8 +578,6 @@ clientmessage(XEvent *e) {
 			c->oldbw = wa.border_width;
 			c->bw = 0;
 			c->isfloating = True;
-			/* reuse tags field as mapped status */
-			c->tags = 1;
 			updatesizehints(c);
 			updatesystrayicongeom(c, wa.width, wa.height);
 			XAddToSaveSet(dpy, c->win);
@@ -991,17 +987,10 @@ getatomprop(Client *c, Atom prop) {
 	unsigned long dl;
 	unsigned char *p = NULL;
 	Atom da, atom = None;
-	/* FIXME getatomprop should return the number of items and a pointer to
-	 * the stored data instead of this workaround */
-	Atom req = XA_ATOM;
-	if(prop == xatom[XembedInfo])
-		req = xatom[XembedInfo];
 
-	if(XGetWindowProperty(dpy, c->win, prop, 0L, sizeof atom, False, req,
+	if(XGetWindowProperty(dpy, c->win, prop, 0L, sizeof atom, False, XA_ATOM,
 	                      &da, &di, &dl, &dl, &p) == Success && p) {
 		atom = *(Atom *)p;
-		if(da == xatom[XembedInfo] && dl == 2)
-			atom = ((Atom *)p)[1];
 		XFree(p);
 	}
 	return atom;
@@ -1270,11 +1259,6 @@ void
 maprequest(XEvent *e) {
 	static XWindowAttributes wa;
 	XMapRequestEvent *ev = &e->xmaprequest;
-	Client *i;
-	if((i = wintosystrayicon(ev->window))) {
-		resizebarwin(selmon);
-		updatesystray();
-	}
 
 	if(!XGetWindowAttributes(dpy, ev->window, &wa))
 		return;
@@ -1388,17 +1372,13 @@ propertynotify(XEvent *e) {
 	Window trans;
 	XPropertyEvent *ev = &e->xproperty;
 
-	if((c = wintosystrayicon(ev->window))) {
-		if(ev->atom == XA_WM_NORMAL_HINTS) {
-			updatesizehints(c);
-			updatesystrayicongeom(c, c->w, c->h);
-		}
-		else
-			updatesystrayiconstate(c, ev);
+	if((c = wintosystrayicon(ev->window)) && (ev->atom == XA_WM_NORMAL_HINTS)) {
+		updatesizehints(c);
+		updatesystrayicongeom(c, c->w, c->h);
 		resizebarwin(selmon);
 		updatesystray();
 	}
-	if((ev->window == root) && (ev->atom == XA_WM_NAME))
+	else if((ev->window == root) && (ev->atom == XA_WM_NAME))
 		updatestatus();
 	else if(ev->state == PropertyDelete)
 		return; /* ignore */
@@ -1749,7 +1729,6 @@ setup(void) {
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 	xatom[Manager] = XInternAtom(dpy, "MANAGER", False);
 	xatom[Xembed] = XInternAtom(dpy, "_XEMBED", False);
-	xatom[XembedInfo] = XInternAtom(dpy, "_XEMBED_INFO", False);
 	/* init cursors */
 	cursor[CurNormal] = XCreateFontCursor(dpy, XC_left_ptr);
 	cursor[CurResize] = XCreateFontCursor(dpy, XC_sizing);
@@ -1971,11 +1950,6 @@ unmapnotify(XEvent *e) {
 		else
 			unmanage(c, False);
 	}
-	else if((c = wintosystrayicon(ev->window))) {
-		removesystrayicon(c);
-		resizebarwin(selmon);
-		updatesystray();
-	}
 }
 
 void
@@ -2194,26 +2168,6 @@ updatesystrayicongeom(Client *i, int w, int h) {
 				i->w = (int) ((float)bh * ((float)i->w / (float)i->h));
 			i->h = bh;
 		}
-	}
-}
-
-void
-updatesystrayiconstate(Client *i, XPropertyEvent *ev) {
-	long flags;
-
-	if(!showsystray || !i || ev->atom != xatom[XembedInfo] ||
-			!(flags = getatomprop(i, xatom[XembedInfo])))
-		return;
-
-	if(flags & XEMBED_MAPPED && !i->tags) {
-		i->tags = 1;
-		XMapRaised(dpy, i->win);
-		setclientstate(i, NormalState);
-	}
-	else if(!(flags & XEMBED_MAPPED) && i->tags) {
-		i->tags = 0;
-		XUnmapWindow(dpy, i->win);
-		setclientstate(i, WithdrawnState);
 	}
 }
 
