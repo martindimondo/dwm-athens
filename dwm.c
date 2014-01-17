@@ -228,7 +228,7 @@ static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
 static void run(void);
 static void scan(void);
-static Bool sendevent(Window w, Atom proto, int m, long d0, long d1, long d2, long d3, long d4);
+static Bool sendevent(Window w, Atom t, int m, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setfocus(Client *c);
@@ -1175,7 +1175,7 @@ void
 killclient(const Arg *arg) {
 	if(!selmon->sel)
 		return;
-	if(!sendevent(selmon->sel->win, wmatom[WMDelete], NoEventMask, wmatom[WMDelete], CurrentTime, 0 , 0, 0)) {
+	if(!sendevent(selmon->sel->win, wmatom[WMProtocols], NoEventMask, wmatom[WMDelete], CurrentTime, 0 , 0, 0)) {
 		XGrabServer(dpy);
 		XSetErrorHandler(xerrordummy);
 		XSetCloseDownMode(dpy, DestroyAll);
@@ -1605,44 +1605,39 @@ setclientstate(Client *c, long state) {
 }
 
 Bool
-sendevent(Window w, Atom proto, int mask, long d0, long d1, long d2, long d3, long d4) {
+sendevent(Window w, Atom t, int mask, long d0, long d1, long d2, long d3, long d4) {
 	int n;
-	Atom *protocols, mt;
+	Atom *protocols;
 	Bool exists = False;
 	XEvent ev;
 
-	if(proto == wmatom[WMTakeFocus] || proto == wmatom[WMDelete]) {
-		mt = wmatom[WMProtocols];
+	if(t == wmatom[WMProtocols]) {
 		if(XGetWMProtocols(dpy, w, &protocols, &n)) {
 			while(!exists && n--)
-				exists = protocols[n] == proto;
+				exists = protocols[n] == d0;
 			XFree(protocols);
 		}
+		if(!exists)
+			return False;
 	}
-	else {
-		exists = True;
-		mt = proto;
-	}
-	if(exists) {
-		ev.type = ClientMessage;
-		ev.xclient.window = w;
-		ev.xclient.message_type = mt;
-		ev.xclient.format = 32;
-		ev.xclient.data.l[0] = d0;
-		ev.xclient.data.l[1] = d1;
-		ev.xclient.data.l[2] = d2;
-		ev.xclient.data.l[3] = d3;
-		ev.xclient.data.l[4] = d4;
-		XSendEvent(dpy, w, False, mask, &ev);
-	}
-	return exists;
+	ev.type = ClientMessage;
+	ev.xclient.window = w;
+	ev.xclient.message_type = t;
+	ev.xclient.format = 32;
+	ev.xclient.data.l[0] = d0;
+	ev.xclient.data.l[1] = d1;
+	ev.xclient.data.l[2] = d2;
+	ev.xclient.data.l[3] = d3;
+	ev.xclient.data.l[4] = d4;
+	XSendEvent(dpy, w, False, mask, &ev);
+	return True;
 }
 
 void
 setfocus(Client *c) {
 	if(!c->neverfocus)
 		XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
-	sendevent(c->win, wmatom[WMTakeFocus], NoEventMask, wmatom[WMTakeFocus], CurrentTime, 0, 0, 0);
+	sendevent(c->win, wmatom[WMProtocols], NoEventMask, wmatom[WMTakeFocus], CurrentTime, 0, 0, 0);
 }
 
 void
