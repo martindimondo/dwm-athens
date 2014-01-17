@@ -1466,7 +1466,13 @@ removesystrayicon(Client *c) {
 
 void
 resize(Client *c, int x, int y, int w, int h, Bool interact) {
-	if(applysizehints(c, &x, &y, &w, &h, interact))
+	int bw = (!c->isfloating && (selmon->lt[selmon->sellt]->arrange == monocle ||
+	          (selmon->lt[selmon->sellt]->arrange &&
+	           nexttiled(c->mon->clients) == c && nexttiled(c->next) == NULL))) ? 0 : borderpx,
+	         dbw = bw - c->bw;
+
+	w -= 2 * dbw, h -= 2 * dbw, c->bw = bw;
+	if(dbw || applysizehints(c, &x, &y, &w, &h, interact))
 		resizeclient(c, x, y, w, h);
 }
 
