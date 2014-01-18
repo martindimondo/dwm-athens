@@ -285,7 +285,7 @@ static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
 static void updatestatus(void);
 static void updatesystray(void);
-static void updatesystrayicongeom(Client *c, int w, int h);
+static void updatesystrayicongeom(Client *c);
 static void updatesystrayiconstate(Client *c);
 static void updatewindowtype(Client *c);
 static void updatetitle(Client *c);
@@ -612,7 +612,7 @@ clientmessage(XEvent *e) {
 			c->tags = True; /* reuse tags field as mapped status */
 			systray->icons = c;
 			XGetWindowAttributes(dpy, c->win, &wa);
-			updatesystrayicongeom(c, wa.width, wa.height);
+			updatesystrayicongeom(c);
 			XAddToSaveSet(dpy, c->win);
 			XSelectInput(dpy, c->win, StructureNotifyMask | PropertyChangeMask);
 			XReparentWindow(dpy, c->win, systray->win, 0, 0);
@@ -1409,7 +1409,7 @@ propertynotify(XEvent *e) {
 
 	if((c = wintosystrayicon(ev->window))) {
 		if(ev->atom == XA_WM_NORMAL_HINTS) {
-			updatesystrayicongeom(c, c->w, c->h);
+			updatesystrayicongeom(c);
 			resizebarwin(selmon);
 			updatesystray();
 		}
@@ -2281,24 +2281,10 @@ updatestatus(void) {
 }
 
 void
-updatesystrayicongeom(Client *c, int w, int h) {
-	c->h = bh;
-	if(w == h)
-		c->w = bh;
-	else if(h == bh)
-		c->w = w;
-	else
-		c->w = (int) ((float)bh * ((float)w / (float)h));
+updatesystrayicongeom(Client *c) {
 	updatesizehints(c);
-	applysizehints(c, &(c->x), &(c->y), &(c->w), &(c->h), False);
-	/* force icons into the systray dimensions if they don't want to */
-	if(c->h > bh) {
-		if(c->w == c->h)
-			c->w = bh;
-		else
-			c->w = (int) ((float)bh * ((float)c->w / (float)c->h));
-		c->h = bh;
-	}
+	c->h = bh > c->minh && bh - c->minh < 0.15 * bh ? c->minh : bh;
+	c->w = c->h * (c->minh && c->minw ? ((float)c->minw) / c->minh : 1);
 }
 
 void
@@ -2359,7 +2345,7 @@ updatesystray(void) {
 		if(!c->tags)
 			continue;
 		w += systraygappx;
-		XMoveResizeWindow(dpy, c->win, w, 0, c->w, c->h);
+		XMoveResizeWindow(dpy, c->win, w, bh/2 - c->h/2, c->w, c->h);
 		c->mon = selmon;
 		w += c->w;
 	}
