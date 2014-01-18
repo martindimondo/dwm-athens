@@ -1349,7 +1349,7 @@ resize(Client *c, int x, int y, int w, int h, Bool interact) {
 	         dbw = bw - c->bw;
 
 	w -= 2 * dbw, h -= 2 * dbw, c->bw = bw;
-	if(dbw || applysizehints(c, &x, &y, &w, &h, interact))
+	if(applysizehints(c, &x, &y, &w, &h, interact) || dbw)
 		resizeclient(c, x, y, w, h);
 }
 
