@@ -15,6 +15,7 @@ Patches
 2. hidden-bar: shows top bar when urgent flag is set & unify top bar for all tags
 3. mouseover-nofocus: Mouse over on client doesn't change focus
 4. [Pango](http://dwm.suckless.org/patches/pango)
+5. [Columns](http://dwm.suckless.org/patches/columns)
 
 Keybindings
 ===========
@@ -22,6 +23,7 @@ Keybindings
     "[M]"  monocle                        : [Alt] +  m
     "[]="  tile                           : [Alt] +  t
     "><>"  no layout                      : [Alt] +  f
+    "|||"  column                         : [Alt] +  c
 
     Invoke dmenu.sh (custom dmenu script) : [Alt]   + [p]
     Launch terminal                       : [Shift] + [Alt] + [Enter]
