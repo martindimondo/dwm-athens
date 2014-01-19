@@ -16,6 +16,7 @@ Patches
 3. mouseover-nofocus: Mouse over on client doesn't change focus
 4. [Pango](http://dwm.suckless.org/patches/pango)
 5. [Columns](http://dwm.suckless.org/patches/columns)
+6. [Systray](http://dwm.suckless.org/patches/systray)
 
 Keybindings
 ===========
