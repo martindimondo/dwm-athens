@@ -521,6 +521,9 @@ clearurgent(Client *c) {
 	XWMHints *wmh;
 
 	c->isurgent = False;
+    if (selmon->showbar)
+        togglebar(NULL);
+
 	if(!(wmh = XGetWMHints(dpy, c->win)))
 		return;
 	wmh->flags &= ~XUrgencyHint;
@@ -2031,8 +2034,12 @@ updatewmhints(Client *c) {
 			wmh->flags &= ~XUrgencyHint;
 			XSetWMHints(dpy, c->win, wmh);
 		}
-		else
-			c->isurgent = (wmh->flags & XUrgencyHint) ? True : False;
+        else {
+            c->isurgent = (wmh->flags & XUrgencyHint) ? True : False;
+            if (c->isurgent && !selmon->showbar && !ISVISIBLE(c)) {
+                togglebar(NULL);
+            }
+        }
 		if(wmh->flags & InputHint)
 			c->neverfocus = !wmh->input;
 		else
