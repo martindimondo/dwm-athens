@@ -828,7 +828,6 @@ enternotify(XEvent *e) {
 	}
 	else if(!c || c == selmon->sel)
 		return;
-	focus(c);
 }
 
 void
