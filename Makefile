@@ -24,13 +24,13 @@ config.h:
 	@echo creating $@ from config.def.h
 	@cp config.def.h $@
 
-dwm: ${OBJ}
+dwm: clean ${OBJ}
 	@echo CC -o $@
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
 	@echo cleaning
-	@rm -f dwm ${OBJ} dwm-${VERSION}.tar.gz
+	@rm -f dwm ${OBJ} config.h dwm-${VERSION}.tar.gz
 
 dist: clean
 	@echo creating dist tarball
