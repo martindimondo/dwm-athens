@@ -1,7 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 
 /* appearance */
-static const char dmenu_font[]         = "-*-terminus-*-r-normal-*-*-120-*-*-*-*-iso8859-*";
+static const char dmenu_font[]         = "-*-vera-sans-*-r-normal-*-*-120-*-*-*-*-iso8859-*";
 static const char font[]               = "Vera Sans 12";
 static const char normbordercolor[]    = "#444444";
 static const char normbgcolor[]        = "#222222";
@@ -52,7 +52,7 @@ static const Layout layouts[] = {
 
 /* commands */
 static const char *dmenucmd[] = { "dmenu", "-fn", dmenu_font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, "-i", NULL }; 
-static const char *termcmd[]  = { "urxvt", NULL };
+static const char *termcmd[]  = { "st", NULL };
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
