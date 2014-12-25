@@ -2,7 +2,7 @@
 
 /* appearance */
 static const char dmenu_font[]         = "-*-terminus-*-r-normal-*-*-120-*-*-*-*-iso8859-*";
-static const char font[]               = "Sans 8";
+static const char font[]               = "Vera Sans 12";
 static const char normbordercolor[]    = "#444444";
 static const char normbgcolor[]        = "#222222";
 static const char normfgcolor[]        = "#bbbbbb";
@@ -11,7 +11,7 @@ static const char selbgcolor[]         = "#005577";
 static const char selfgcolor[]         = "#eeeeee";
 static const unsigned int borderpx     = 1;         /* border pixel of windows */
 static const unsigned int snap         = 32;        /* snap pixel */
-static const unsigned int minbhpx      = 16;        /* min height pixel of bar */
+static const unsigned int minbhpx      = 32;        /* min height pixel of bar */
 static const unsigned int systraygappx = 2;         /* gap pixel between systray icons */
 static const Bool showsystray          = True;      /* False means no systray */
 static const Bool showbar              = False;     /* False means no bar */
@@ -19,7 +19,7 @@ static const Bool topbar               = True;      /* False means bottom bar */
 static const Bool statusmarkup         = True;      /* True means use pango markup in status message */
 
 /* tagging */
-static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+static const char *tags[] = { "CODE", "BUILD", "WEB", "4", "5", "6", "7", "8", "MAIL" };
 
 static const Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating   monitor */
@@ -51,7 +51,7 @@ static const Layout layouts[] = {
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
-static const char *dmenucmd[] = { "dmenu.sh", "-fn", dmenu_font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, "-i", NULL }; 
+static const char *dmenucmd[] = { "dmenu", "-fn", dmenu_font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, "-i", NULL }; 
 static const char *termcmd[]  = { "urxvt", NULL };
 
 static Key keys[] = {
