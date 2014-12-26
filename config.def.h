@@ -1,7 +1,10 @@
 /* See LICENSE file for copyright and license details. */
 
 /* appearance */
-static const char dmenu_font[]         = "-*-vera-sans-*-r-normal-*-*-120-*-*-*-*-iso8859-*";
+
+
+
+static const char dmenu_font[]         = "-bitstream-*-*-*-*-*-22-*-*-*-*-*-*-*";
 static const char font[]               = "Vera Sans 12";
 static const char normbordercolor[]    = "#444444";
 static const char normbgcolor[]        = "#222222";
@@ -51,7 +54,7 @@ static const Layout layouts[] = {
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
-static const char *dmenucmd[] = { "dmenu", "-fn", dmenu_font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, "-i", NULL }; 
+static const char *dmenucmd[] = { "dmenu_run", "-fn", dmenu_font, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, "-i", NULL }; 
 static const char *termcmd[]  = { "st", NULL };
 
 static Key keys[] = {
