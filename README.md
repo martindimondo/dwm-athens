@@ -38,6 +38,11 @@ Other settings
 - namster is 3
 - terminal set as: urxvt (unicode-rxvt)
 
+Screenshot
+=========
+
+![Screenshot](screenshot.png "Screenshot")
+
 Note
 ====
 
