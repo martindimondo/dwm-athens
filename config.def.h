@@ -5,7 +5,7 @@
 
 
 static const char dmenu_font[]         = "-bitstream-*-*-*-*-*-22-*-*-*-*-*-*-*";
-static const char font[]               = "Vera Sans 12";
+static const char font[]               = "FontAwesome 12";
 static const char normbordercolor[]    = "#444444";
 static const char normbgcolor[]        = "#222222";
 static const char normfgcolor[]        = "#bbbbbb";
@@ -22,7 +22,7 @@ static const Bool topbar               = True;      /* False means bottom bar */
 static const Bool statusmarkup         = True;      /* True means use pango markup in status message */
 
 /* tagging */
-static const char *tags[] = { "CODE", "BUILD", "WEB", "4", "5", "6", "7", "8", "MAIL" };
+static const char *tags[] = { "", "", "", "", "5", "6", "7", "8", "" };
 
 static const Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating   monitor */
